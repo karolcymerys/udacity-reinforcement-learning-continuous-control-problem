@@ -1,0 +1,5 @@
+tqdm
+gymnasium
+gymnasium[classic-control]
+gymnasium[box2d]
+PyQt5
