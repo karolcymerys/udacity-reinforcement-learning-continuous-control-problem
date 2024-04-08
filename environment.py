@@ -7,7 +7,7 @@ from unityagents import UnityEnvironment, BrainInfo
 class ActionResult:
     def __init__(self,
                  states: Union[torch.FloatTensor, torch.cuda.FloatTensor],
-                 rewards: List[int],
+                 rewards: List[float],
                  dones: List[bool]) -> None:
         self.states = states
         self.rewards = rewards
@@ -48,9 +48,11 @@ class ReacherEnvironment:
         return self.agents_no
 
     def reset(self) -> ActionResult:
-        return ActionResult.from_brain_info(self.unity_env.reset(train_mode=self.training_mode)[self.brain_name],
-                                            self.device)
+        result = self.unity_env.reset(train_mode=self.training_mode)[self.brain_name]
+        if not self.agents_no:
+            self.agents_no = len(result.agents)
+        return ActionResult.from_brain_info(result, self.device)
 
     def step(self, action: Union[torch.FloatTensor, torch.cuda.FloatTensor]) -> ActionResult:
-        action = action.detach().cpu().numpy()
-        return ActionResult.from_brain_info(self.unity_env.step(action)[self.brain_name], self.device)
+        actions = torch.clip(action, -1, 1).detach().cpu().numpy()
+        return ActionResult.from_brain_info(self.unity_env.step(actions)[self.brain_name], self.device)
