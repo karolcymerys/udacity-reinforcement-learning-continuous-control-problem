@@ -5,59 +5,11 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 from torch import nn
-from torch.nn.init import xavier_normal_ as init_layer
 from tqdm import tqdm
 
 from environment import ReacherEnvironment
 from memory import ReplayBuffer
-
-
-class ActorNetwork(nn.Module):
-    def __init__(self, state_size: int, action_size: int, seed: int = 0) -> None:
-        super(ActorNetwork, self).__init__()
-        self.seed = torch.manual_seed(seed)
-
-        self.mlp = nn.Sequential(
-            nn.Linear(in_features=state_size, out_features=128),
-            nn.LeakyReLU(),
-            nn.Linear(in_features=128, out_features=128),
-            nn.LeakyReLU(),
-            nn.Linear(in_features=128, out_features=action_size),
-            nn.Tanh()
-        )
-
-        init_layer(self.mlp[0].weight)
-        init_layer(self.mlp[2].weight)
-        init_layer(self.mlp[4].weight)
-
-    def forward(self, states: Union[torch.FloatTensor, torch.cuda.FloatTensor]
-                ) -> Union[torch.FloatTensor, torch.cuda.FloatTensor]:
-        return self.mlp(states)
-
-
-class CriticNetwork(nn.Module):
-
-    def __init__(self, state_size: int, action_size: int, seed: int = 0) -> None:
-        super(CriticNetwork, self).__init__()
-        self.seed = torch.manual_seed(seed)
-
-        self.v = nn.Sequential(
-            nn.Linear(in_features=state_size+action_size, out_features=128),
-            nn.LeakyReLU(),
-            nn.Linear(in_features=128, out_features=128),
-            nn.LeakyReLU(),
-            nn.Linear(in_features=128, out_features=1),
-        )
-
-        init_layer(self.v[0].weight)
-        init_layer(self.v[2].weight)
-        init_layer(self.v[4].weight)
-
-    def forward(self,
-                states: Union[torch.FloatTensor, torch.cuda.FloatTensor],
-                actions: Union[torch.FloatTensor, torch.cuda.FloatTensor],
-                ) -> Union[torch.FloatTensor, torch.cuda.FloatTensor]:
-        return self.v(torch.cat([states, actions], dim=1))
+from model import DDPGActorNetwork, DDPGCriticNetwork
 
 
 class DDPG:
@@ -72,8 +24,8 @@ class DDPG:
         self.device = device
         self.training_mode = training_mode
 
-        self.actor_network = ActorNetwork(state_size, action_size).to(device)
-        self.critic_network = CriticNetwork(state_size, action_size).to(device)
+        self.actor_network = DDPGActorNetwork(state_size, action_size).to(device)
+        self.critic_network = DDPGCriticNetwork(state_size, action_size).to(device)
 
         random.seed(seed)
 
@@ -94,14 +46,15 @@ class DDPG:
               actor_lr: float = 3e-4,
               critic_lr: float = 3e-3,
               tau: float = 1e-3,
-              gamma: float = 0.95,
+              gamma: float = 0.99,
               buffer_size: int = 100_000,
               noise_factor: float = 0.1,
-              noise_factor_decay: float = 0.995) -> np.ndarray:
+              noise_factor_decay: float = 0.999,
+              learn_every_timestep: int = 20) -> None:
         # https://spinningup.openai.com/en/latest/algorithms/ddpg.html
 
-        target_actor_network = ActorNetwork(self.state_size, self.action_size).to(self.device)
-        target_critic_network = CriticNetwork(self.state_size, self.action_size).to(self.device)
+        target_actor_network = DDPGActorNetwork(self.state_size, self.action_size).to(self.device)
+        target_critic_network = DDPGCriticNetwork(self.state_size, self.action_size).to(self.device)
         self.__soft_update(self.actor_network, target_actor_network, 1.0)
         self.__soft_update(self.critic_network, target_critic_network, 1.0)
 
@@ -134,7 +87,7 @@ class DDPG:
                     )
                     total_reward += results.rewards
 
-                    if t % 20 == 0:
+                    if t % learn_every_timestep == 0:
                         self.__learn(
                             target_actor_network,
                             target_critic_network,
@@ -165,11 +118,8 @@ class DDPG:
                 noise_factor = max(noise_factor*noise_factor_decay, 0.001)
 
                 np_scores = np.array(scores)
-                for i in range(20):
-                    plt.plot(np.arange(len(scores)), np_scores[:, i], label=f'Agent {i}')
+                plt.plot(np.arange(len(scores)), np.mean(np_scores, axis=1))
                 plt.pause(1e-5)
-
-        return np.mean(scores, axis=0)
 
     def __learn(self,
                 target_actor_network: torch.nn.Module,
@@ -216,3 +166,15 @@ class DDPG:
     def __soft_update(src_network: torch.nn.Module, desc_network: torch.nn.Module, tau: float) -> None:
         for desc_param, src_param in zip(desc_network.parameters(), src_network.parameters()):
             desc_param.data.copy_(tau * src_param.data + (1.0 - tau) * desc_param.data)
+
+    def load_weights(self, actor_weights_filepath: str) -> None:
+        self.actor_network.load_state_dict(torch.load(actor_weights_filepath))
+
+    def test(self, env: ReacherEnvironment) -> None:
+        results = env.reset()
+        scores = np.zeros(env.agents_size())
+        while not np.any(results.dones):
+            actions = self.act(results.states)
+            results = env.step(actions)
+            scores += results.rewards
+            print(f'\rCurrent score: {np.mean(scores)}', end='')

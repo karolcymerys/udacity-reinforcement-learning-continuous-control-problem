@@ -4,21 +4,32 @@ __TODO: Put here animation of trained agent__
 
 ## Description
 
+The goal of this project is to resolve __multi-agent__ environment using __Reinforcement Learning Policy-Based Method__.
+
 ### Environment
 
-__TODO__
+This environment is called _Reacher_ environment. 
+It consists of 20 double-joined arms (__agents__). 
+The goal of single agent is to move arm to the goal location and keep it there.
+Environment is considered as resolved in training process when all the agents get 
+__an average score of +30 over 100 consecutive episodes__.
+
 
 ### State
 
-__TODO__
+The state space of environment is built from 33-dimension vector that includes 
+the agent's position, rotation, velocity and angular velocities of the arm.
 
-### Action
+### Actions
 
-__TODO__
+An agent is responsible for deciding, based on provided environment state space 
+what action should be taken to get the best score. 
+Agent's action is 4-dimensional vector that describes torque applicable to two joints.
+Each element of action's vector should be between `-1` and `1`.
 
-### Reward
+### Reward  
 
-__TODO__
+- a reward of +0.1 point is provided for each step when the agent's hand is kept in the goal location
 
 ## Algorithm Description
 
@@ -26,7 +37,21 @@ All details related to algorithm utilized to resolve this problem can be found i
 
 ## Structure description
 
-__TODO__
+The project contains following files:
+
+| Filename                  | Description                                                                    |
+|---------------------------|--------------------------------------------------------------------------------|
+| `ddpg.py`                 | implementation of Deep Deterministic Policy Gradient Algorithm                 |
+| `doc`                     | folder that contains docs related files                                        |
+| `environment.py`          | wrapper class for _UnityEnvironment_ to simplify interactions with environment |
+| `model.py`                | Pytorch-based implementation of _ policy network_ (agent and critic networks)  |  
+| `Report.md`               | doc file that contains utilized algorithm's details                            |  
+| `requirements.txt`        | file that contains all required Python dependencies                            |  
+| `README.md`               | doc file that contains project's description                                   | 
+| `test.py`                 | Python script that allows to start trained agent                               |
+| `train.py`                | main Python script for training                                                |
+| `actor_model_weights.pt`  | file that contains weights of agent network                                    |
+| `critic_model_weights.pt` | file that contains weights of critic network                                   |
 
 ## Try it yourself
 
@@ -72,7 +97,7 @@ Please note, that you may need to adjust `filename` parameter of `ReacherEnviron
 
 ### Training
 
-Feel free to train your own agent. In order to do that:
+Feel free to train your own agents. In order to do that:
 
 1. In `train.py` file adjust hyperparameters
 2. Run `python train.py` to start training process
