@@ -39,19 +39,22 @@ All details related to algorithm utilized to resolve this problem can be found i
 
 The project contains following files:
 
-| Filename                  | Description                                                                    |
-|---------------------------|--------------------------------------------------------------------------------|
-| `ddpg.py`                 | implementation of Deep Deterministic Policy Gradient Algorithm                 |
-| `doc`                     | folder that contains docs related files                                        |
-| `environment.py`          | wrapper class for _UnityEnvironment_ to simplify interactions with environment |
-| `model.py`                | Pytorch-based implementation of _ policy network_ (agent and critic networks)  |  
-| `Report.md`               | doc file that contains utilized algorithm's details                            |  
-| `requirements.txt`        | file that contains all required Python dependencies                            |  
-| `README.md`               | doc file that contains project's description                                   | 
-| `test.py`                 | Python script that allows to start trained agent                               |
-| `train.py`                | main Python script for training                                                |
-| `actor_model_weights.pt`  | file that contains weights of agent network                                    |
-| `critic_model_weights.pt` | file that contains weights of critic network                                   |
+| Filename                       | Description                                                                    |
+|--------------------------------|--------------------------------------------------------------------------------|
+| `ddpg.py`                      | implementation of Deep Deterministic Policy Gradient Algorithm                 |
+| `doc`                          | folder that contains docs related files                                        |
+| `environment.py`               | wrapper class for _UnityEnvironment_ to simplify interactions with environment |
+| `model.py`                     | Pytorch-based implementation of _ policy network_ (agent and critic networks)  |  
+| `ppo.py`                       | implementation of Proximal Policy Optimization Algorithm                       |
+| `Report.md`                    | doc file that contains utilized algorithm's details                            |  
+| `requirements.txt`             | file that contains all required Python dependencies                            |  
+| `README.md`                    | doc file that contains project's description                                   | 
+| `test.py`                      | Python script that allows to start trained agent                               |
+| `train.py`                     | main Python script for training                                                |
+| `ddpg_actor_model_weights.pt`  | file that contains weights of agent network (DDPG)                             |
+| `ddpg_critic_model_weights.pt` | file that contains weights of critic network (DDPG)                            |
+| `ppo_actor_model_weights.pt`   | file that contains weights of agent network (PPO)                              |
+| `ppo_critic_model_weights.pt`  | file that contains weights of critic network (PPO)                             |
 
 ## Try it yourself
 
