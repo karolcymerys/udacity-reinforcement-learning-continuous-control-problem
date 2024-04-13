@@ -13,7 +13,7 @@ GAMMA = 0.995
 
 
 TAU = 1e-3
-BUFFER_SIZE = 250_000
+BUFFER_SIZE = 1_000_000
 
 
 def ddpg(env: ReacherEnvironment) -> None:

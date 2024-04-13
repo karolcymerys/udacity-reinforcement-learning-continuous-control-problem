@@ -48,9 +48,9 @@ class DDPG:
               tau: float = 1e-3,
               gamma: float = 0.99,
               buffer_size: int = 100_000,
-              noise_factor: float = 0.1,
-              noise_factor_decay: float = 0.999,
-              learn_every_timestep: int = 20) -> None:
+              noise_factor: float = 0.75,
+              noise_factor_decay: float = 0.995,
+              optimizer_timestamps: int = 20) -> None:
         # https://spinningup.openai.com/en/latest/algorithms/ddpg.html
 
         target_actor_network = DDPGActorNetwork(self.state_size, self.action_size).to(self.device)
@@ -87,7 +87,7 @@ class DDPG:
                     )
                     total_reward += results.rewards
 
-                    if t % learn_every_timestep == 0:
+                    if t % optimizer_timestamps == 0:
                         self.__learn(
                             target_actor_network,
                             target_critic_network,
@@ -119,7 +119,7 @@ class DDPG:
 
                 np_scores = np.array(scores)
                 plt.plot(np.arange(len(scores)), np.mean(np_scores, axis=1))
-                plt.pause(1e-5)
+                plt.pause(1e-4)
 
     def __learn(self,
                 target_actor_network: torch.nn.Module,
@@ -138,7 +138,7 @@ class DDPG:
         critic_loss_fn = nn.MSELoss()
 
         for agent_id in range(10):
-            samples = replay_buffer.sample(256)
+            samples = replay_buffer.sample(128)
 
             expected_actions = target_actor_network(samples[3])
             expected_q_value = target_critic_network(samples[3], expected_actions)

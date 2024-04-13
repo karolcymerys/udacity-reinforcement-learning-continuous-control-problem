@@ -1,9 +1,9 @@
+import math
 from typing import Union, Tuple
 
 import torch
 from torch import nn
 from torch.distributions import MultivariateNormal
-from torch.nn.init import xavier_normal_ as init_layer, normal_
 
 
 class DDPGActorNetwork(nn.Module):
@@ -13,16 +13,17 @@ class DDPGActorNetwork(nn.Module):
 
         self.mlp = nn.Sequential(
             nn.Linear(in_features=state_size, out_features=128),
+            nn.BatchNorm1d(128),
             nn.ReLU(),
-            nn.Linear(in_features=128, out_features=128),
+            nn.Linear(in_features=128, out_features=256),
             nn.ReLU(),
-            nn.Linear(in_features=128, out_features=action_size),
+            nn.Linear(in_features=256, out_features=action_size),
             nn.Tanh()
         )
 
-        init_layer(self.mlp[0].weight)
-        init_layer(self.mlp[2].weight)
-        init_layer(self.mlp[4].weight)
+        self.mlp[0].weight.data.uniform_(-1/math.sqrt(state_size), 1/math.sqrt(state_size))
+        self.mlp[3].weight.data.uniform_(-1/math.sqrt(128), 1/math.sqrt(128))
+        self.mlp[5].weight.data.uniform_(-1/math.sqrt(256), 1/math.sqrt(256))
 
     def forward(self, states: Union[torch.FloatTensor, torch.cuda.FloatTensor]
                 ) -> Union[torch.FloatTensor, torch.cuda.FloatTensor]:
@@ -35,23 +36,34 @@ class DDPGCriticNetwork(nn.Module):
         super(DDPGCriticNetwork, self).__init__()
         self.seed = torch.manual_seed(seed)
 
-        self.v = nn.Sequential(
-            nn.Linear(in_features=state_size + action_size, out_features=128),
-            nn.ReLU(),
-            nn.Linear(in_features=128, out_features=128),
-            nn.ReLU(),
-            nn.Linear(in_features=128, out_features=1),
+        self.layer1 = nn.Sequential(
+            nn.Linear(in_features=state_size, out_features=128),
+            nn.BatchNorm1d(128),
+            nn.ReLU()
         )
 
-        init_layer(self.v[0].weight)
-        init_layer(self.v[2].weight)
-        init_layer(self.v[4].weight)
+        self.layer2 = nn.Sequential(
+            nn.Linear(in_features=action_size+128, out_features=256),
+            nn.BatchNorm1d(256),
+            nn.ReLU()
+        )
+
+        self.layer3 = nn.Sequential(
+            nn.Linear(in_features=256, out_features=1),
+        )
+
+        self.layer1[0].weight.data.uniform_(-1/math.sqrt(state_size+action_size), 1/math.sqrt(state_size+action_size))
+        self.layer2[0].weight.data.uniform_(-1/math.sqrt(128), 1/math.sqrt(128))
+        self.layer3[0].weight.data.uniform_(-1/math.sqrt(256), 1/math.sqrt(256))
 
     def forward(self,
                 states: Union[torch.FloatTensor, torch.cuda.FloatTensor],
                 actions: Union[torch.FloatTensor, torch.cuda.FloatTensor],
                 ) -> Union[torch.FloatTensor, torch.cuda.FloatTensor]:
-        return self.v(torch.cat([states, actions], dim=1))
+        x = self.layer1(states)
+        x = self.layer2(torch.cat([x, actions], dim=1))
+        return self.layer3(x)
+
 
 
 class PPOActorNetwork(nn.Module):
