@@ -32,7 +32,7 @@ class ProximalPolicyOptimizationAlgorithm:
         self.critic_network.eval()
         with torch.no_grad():
             actions, probs, _ = self.actor_network.act(states)
-            values = self.critic_network(states)
+            values = self.critic_network(states, actions)
         return actions.detach(), values.detach(), probs.detach()
 
     def train(self,
@@ -43,7 +43,7 @@ class ProximalPolicyOptimizationAlgorithm:
               eps: float = 0.2,
               eps_decay: float = 0.99,
               gamma: float = 0.99,
-              beta: float = 0.1,
+              beta: float = 0.01,
               beta_decay: float = 0.99) -> None:
 
         def surrogate_fn(
@@ -57,8 +57,7 @@ class ProximalPolicyOptimizationAlgorithm:
             ratio = torch.exp(_new_policy_probs - _old_policy_probs)
             clipped_ratio = torch.clip(ratio, 1 - _eps, 1 + _eps)
 
-            _advantages_val = (_advantages - _advantages.mean()) / (_advantages.std() + 1e-10)
-            surrogate_loss = (torch.min(ratio * _advantages, clipped_ratio * _advantages_val))
+            surrogate_loss = (torch.min(ratio * _advantages, clipped_ratio * _advantages))
             return -torch.mean(surrogate_loss + _beta * _entropy)
 
         fig = plt.figure()
@@ -95,7 +94,7 @@ class ProximalPolicyOptimizationAlgorithm:
                         torch.nn.utils.clip_grad_norm_(self.actor_network.parameters(), 0.5)
                         actor_optimizer.step()
 
-                        received_v = self.critic_network(states)
+                        received_v = self.critic_network(states, trajectories['actions'][sample_indices[start_idx:start_idx + BATCH_SIZE], :])
 
                         critic_optimizer.zero_grad()
                         loss = critic_loss(received_v, future_rewards)
@@ -115,8 +114,8 @@ class ProximalPolicyOptimizationAlgorithm:
                 if np.min(np.mean(windowed_score, axis=0)) >= 30.0:
                     break
 
-                eps = max(eps*eps_decay, 0.01)
-                beta = max(beta*beta_decay, 0.05)
+                eps = max(eps*eps_decay, 0.05)
+                beta = max(beta*beta_decay, 0.001)
                 np_scores = np.array(scores)
                 plt.plot(np.arange(len(scores)), np.mean(np_scores, axis=1))
                 plt.pause(1e-5)
@@ -205,8 +204,8 @@ class ProximalPolicyOptimizationAlgorithm:
 
         discounts = (gamma * gae_lambda) ** torch.arange(0, buffer[0]['values'].shape[0] - 1, device=self.device).view(buffer[0]['values'].shape[0] - 1, 1)
         for agent_id, agent_trajectories in buffer.items():
-            delta = agent_trajectories['rewards'][:-1] + gamma * agent_trajectories['values'][1:] - agent_trajectories['values'][:-1]
-            agent_trajectories['advantages'] = (delta * discounts).flip(dims=[0]).cumsum(dim=0).flip(dims=[0])
+            delta = agent_trajectories['future_rewards'][:-1] + gamma * agent_trajectories['values'][1:] - agent_trajectories['values'][:-1]
+            agent_trajectories['advantages'] = delta * discounts
 
         return buffer
 
