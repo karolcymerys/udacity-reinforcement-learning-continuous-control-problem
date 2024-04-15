@@ -10,7 +10,6 @@ class ReplayBuffer:
     def __init__(self,
                  buffer_size: int,
                  device: str,
-                 agents: int = 20,
                  seed: int = 0) -> None:
         self.device = device
         random.seed(seed)
@@ -20,7 +19,6 @@ class ReplayBuffer:
         self.rewards_memory = deque(maxlen=buffer_size)
         self.next_state_memory = deque(maxlen=buffer_size)
         self.dones_memory = deque(maxlen=buffer_size)
-        self.choices = set()
 
     def add(self,
             states: Union[torch.FloatTensor, torch.cuda.FloatTensor],
@@ -34,7 +32,6 @@ class ReplayBuffer:
             self.rewards_memory.append(rewards[agent_id])
             self.next_state_memory.append(next_states[agent_id, :])
             self.dones_memory.append(dones[agent_id])
-            self.choices.add(self.__len__() - 1)
 
     def sample(self, batch_size: int) -> Tuple[
         Union[torch.FloatTensor, torch.cuda.FloatTensor],
@@ -43,7 +40,7 @@ class ReplayBuffer:
         Union[torch.FloatTensor, torch.cuda.FloatTensor],
         Union[torch.IntTensor, torch.cuda.IntTensor]
     ]:
-        selected_indices = random.sample(self.choices,
+        selected_indices = random.sample([i for i in range(self.__len__())],
                                          self.__len__() if self.__len__() < batch_size else batch_size)
 
         return (

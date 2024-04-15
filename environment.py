@@ -54,5 +54,5 @@ class ReacherEnvironment:
         return ActionResult.from_brain_info(result, self.device)
 
     def step(self, action: Union[torch.FloatTensor, torch.cuda.FloatTensor]) -> ActionResult:
-        actions = torch.clip(action, -1, 1).detach().cpu().numpy()
+        actions = torch.clip(action, -1, 1).detach().cpu().data.numpy()
         return ActionResult.from_brain_info(self.unity_env.step(actions)[self.brain_name], self.device)

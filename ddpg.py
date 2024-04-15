@@ -1,5 +1,6 @@
+import copy
 import random
-from typing import Union
+from typing import Union, Tuple
 
 import numpy as np
 import torch
@@ -10,6 +11,30 @@ from tqdm import tqdm
 from environment import ReacherEnvironment
 from memory import ReplayBuffer
 from model import DDPGActorNetwork, DDPGCriticNetwork
+
+
+class OUNoise:
+    """Ornstein-Uhlenbeck process."""
+    # https://soeren-kirchner.medium.com/deep-deterministic-policy-gradient-ddpg-with-and-without-ornstein-uhlenbeck-process-e6d272adfc3
+
+    def __init__(self, size: Tuple[int, int], mu: float = 0., theta: float = 0.15, sigma: float = 0.2, device: str = 'cpu') -> None:
+        """Initialize parameters and noise process."""
+        self.mu = mu * torch.ones(*size, device=device)
+        self.theta = theta
+        self.sigma = sigma
+        self.state = mu * torch.ones(*size, device=device)
+        self.device = device
+
+    def step(self) -> None:
+        """Reset the internal state (= noise) to mean (mu)."""
+        self.state = copy.copy(self.mu)
+
+    def sample(self) -> Union[torch.FloatType, torch.cuda.FloatTensor]:
+        """Update internal state and return it as a noise sample."""
+        x = self.state
+        dx = self.theta * (self.mu - x) + self.sigma * torch.randn(*self.mu.shape, device=self.device)
+        self.state = x + dx
+        return self.state
 
 
 class DDPG:
@@ -30,33 +55,32 @@ class DDPG:
         random.seed(seed)
 
     def act(self,
-            states: Union[torch.FloatType, torch.cuda.FloatTensor],
-            noise_scale: float = 0.0) -> Union[torch.FloatType, torch.cuda.FloatTensor]:
+            states: Union[torch.DoubleTensor, torch.cuda.DoubleTensor],
+            noise_sampler: OUNoise) -> Union[torch.DoubleTensor, torch.cuda.DoubleTensor]:
         self.actor_network.eval()
         with torch.no_grad():
-            actions = self.actor_network(states) + \
-                      noise_scale * torch.randn(states.shape[0], self.action_size).to(self.device)  # Gaussian noise
-
-        return torch.clip(actions, -1, 1)
+            ou_noise = noise_sampler.sample()
+            return (self.actor_network(states) + ou_noise).clip(-1, 1)
 
     def train(self,
               env: ReacherEnvironment,
-              max_episodes: int,
+              max_episodes: int = 1_000,
               max_t: int = 500,
-              actor_lr: float = 3e-4,
-              critic_lr: float = 3e-3,
+              actor_lr: float = 1e-4,
+              critic_lr: float = 3e-4,
               tau: float = 1e-3,
-              gamma: float = 0.99,
+              gamma: float = 0.95,
               buffer_size: int = 100_000,
-              noise_factor: float = 0.75,
-              noise_factor_decay: float = 0.995,
-              optimizer_timestamps: int = 20) -> None:
+              optimizer_timestamps: int = 10,
+              minibatch_size: int = 128) -> None:
         # https://spinningup.openai.com/en/latest/algorithms/ddpg.html
+        # https://arxiv.org/abs/1509.02971
 
         target_actor_network = DDPGActorNetwork(self.state_size, self.action_size).to(self.device)
         target_critic_network = DDPGCriticNetwork(self.state_size, self.action_size).to(self.device)
         self.__soft_update(self.actor_network, target_actor_network, 1.0)
         self.__soft_update(self.critic_network, target_critic_network, 1.0)
+        noise_sampler = OUNoise((env.agents_size(), self.action_size), device=self.device)
 
         actor_optimizer = torch.optim.Adam(self.actor_network.parameters(), actor_lr)
         critic_optimizer = torch.optim.Adam(self.critic_network.parameters(), critic_lr)
@@ -75,7 +99,7 @@ class DDPG:
                 previous_results = env.reset()
                 total_reward = np.zeros(env.agents_size())
                 for t in range(1, max_t + 1):
-                    actions = self.act(previous_results.states, noise_factor)
+                    actions = self.act(previous_results.states, noise_sampler)
                     results = env.step(actions)
 
                     replay_buffer.add(
@@ -95,7 +119,8 @@ class DDPG:
                             critic_optimizer,
                             replay_buffer,
                             gamma,
-                            tau
+                            tau,
+                            minibatch_size
                         )
 
                     if np.any(results.dones):
@@ -103,23 +128,19 @@ class DDPG:
 
                     previous_results = results
 
-                scores.append(total_reward)
-                windowed_score = np.array(scores[-100:])
+                scores.append(np.mean(total_reward))
                 episodes.set_postfix({
-                    'Current Avg reward': np.mean(windowed_score[-1, :]),
-                    'Min reward': np.min(np.mean(windowed_score, axis=0)),
-                    'Avg reward': np.mean(np.mean(windowed_score, axis=0)),
-                    'Max reward': np.max(np.mean(windowed_score, axis=0)),
+                    'Current Avg reward': np.mean(scores[-1]),
+                    'Avg reward': np.mean(scores[-100:]),
                 })
 
-                if np.min(np.mean(windowed_score, axis=0)) >= 30.0:
+                if np.mean(scores[-100:]) >= 30.0:
                     break
 
-                noise_factor = max(noise_factor*noise_factor_decay, 0.001)
-
+                noise_sampler.step()
                 np_scores = np.array(scores)
-                plt.plot(np.arange(len(scores)), np.mean(np_scores, axis=1))
-                plt.pause(1e-4)
+                plt.plot(np.arange(len(scores)), np_scores)
+                plt.pause(1e-5)
 
     def __learn(self,
                 target_actor_network: torch.nn.Module,
@@ -128,7 +149,8 @@ class DDPG:
                 critic_optimizer: torch.optim.Optimizer,
                 replay_buffer: ReplayBuffer,
                 gamma: float,
-                tau: float) -> None:
+                tau: float,
+                minibatch_size: int) -> None:
         # https://towardsdatascience.com/deep-deterministic-policy-gradients-explained-2d94655a9b7b
 
         self.actor_network.train()
@@ -137,22 +159,23 @@ class DDPG:
         target_critic_network.train()
         critic_loss_fn = nn.MSELoss()
 
-        for agent_id in range(10):
-            samples = replay_buffer.sample(128)
+        for _ in range(20):
+            samples = replay_buffer.sample(minibatch_size)
+            states, actions, rewards, next_states, dones = samples
 
-            expected_actions = target_actor_network(samples[3])
-            expected_q_value = target_critic_network(samples[3], expected_actions)
-            expected_y = samples[2] + (gamma * (1 - samples[4]) * expected_q_value)
+            expected_actions = target_actor_network(next_states)
+            expected_q_value = target_critic_network(next_states, expected_actions)
+            expected_y = rewards + (gamma * (1 - dones) * expected_q_value)
 
-            y = self.critic_network(samples[0], samples[1])
+            y = self.critic_network(states, actions)
             critic_loss = critic_loss_fn(y, expected_y.detach())
             critic_optimizer.zero_grad()
             critic_loss.backward()
             torch.nn.utils.clip_grad_norm_(self.critic_network.parameters(), 1)
             critic_optimizer.step()
 
-            action = self.actor_network(samples[0])
-            actor_loss = -(self.critic_network(samples[0], action)).mean()
+            action = self.actor_network(states)
+            actor_loss = -(self.critic_network(states, action)).mean()
 
             actor_optimizer.zero_grad()
             actor_loss.backward()
@@ -164,7 +187,7 @@ class DDPG:
 
     @staticmethod
     def __soft_update(src_network: torch.nn.Module, desc_network: torch.nn.Module, tau: float) -> None:
-        for desc_param, src_param in zip(desc_network.parameters(), src_network.parameters()):
+        for src_param, desc_param in zip(src_network.parameters(), desc_network.parameters()):
             desc_param.data.copy_(tau * src_param.data + (1.0 - tau) * desc_param.data)
 
     def load_weights(self, actor_weights_filepath: str) -> None:
