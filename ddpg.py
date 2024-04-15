@@ -65,14 +65,14 @@ class DDPG:
     def train(self,
               env: ReacherEnvironment,
               max_episodes: int = 1_000,
-              max_t: int = 500,
+              max_t: int = 1_000,
               actor_lr: float = 1e-4,
               critic_lr: float = 3e-4,
               tau: float = 1e-3,
-              gamma: float = 0.95,
+              gamma: float = 0.99,
               buffer_size: int = 100_000,
-              optimizer_timestamps: int = 10,
-              minibatch_size: int = 128) -> None:
+              optimizer_timestamps: int = 20,
+              minibatch_size: int = 256) -> None:
         # https://spinningup.openai.com/en/latest/algorithms/ddpg.html
         # https://arxiv.org/abs/1509.02971
 
@@ -130,11 +130,11 @@ class DDPG:
 
                 scores.append(np.mean(total_reward))
                 episodes.set_postfix({
-                    'Current Avg reward': np.mean(scores[-1]),
-                    'Avg reward': np.mean(scores[-100:]),
+                    'Current Avg reward': np.min(scores[-1]),
+                    'Avg reward': np.min(scores[-100:]),
                 })
 
-                if np.mean(scores[-100:]) >= 30.0:
+                if np.min(scores[-100:]) >= 30.0:
                     break
 
                 noise_sampler.step()
@@ -159,7 +159,7 @@ class DDPG:
         target_critic_network.train()
         critic_loss_fn = nn.MSELoss()
 
-        for _ in range(20):
+        for _ in range(10):
             samples = replay_buffer.sample(minibatch_size)
             states, actions, rewards, next_states, dones = samples
 
