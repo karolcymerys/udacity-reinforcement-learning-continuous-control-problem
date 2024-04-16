@@ -33,9 +33,14 @@ Problem goal was reached at __156th episode__.
 ### Model architecture
 
 To resolve this problem following MLP architectures were employed:   
-- Actor network:  
-    - Input Layer (size: 33)
-    - Hidden Layer (size: 128)
+
+#### Actor network:  
+![Actor network](./docs/actor_architecture.png)
+
+
+#### Critic network:  
+![Critic network](./docs/critic_architecture.png)
+
 ## Ideas for improvements
 
 - Trying another algorithm, e.g. Trust Region Policy Optimization (TRPO) [2], Policy Proximal Optimization (PPO) [3]
