@@ -3,7 +3,7 @@ ___
 
 In order to solve this problem Deep Deterministic Policy Gradient (DDPG) method was employed. 
 Algorithm is depicted on below picture [1]:  
-![DDPG algorithm](./docs/ddpg_pseudocode.png)
+![DDPG algorithm](./docs/ddpg_algorithm.png)
 
 
 ## Plot of rewards
