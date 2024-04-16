@@ -19,20 +19,6 @@ __TODO__
 | learning rate `µ` (critic) | 0.001   |
 | buffer size                | 250,000 |
 
-### DDPG
-
-![Plot of rewards](./docs/PPO_score_plot.png)
-
-#### Utilized hyperparameters
-
-| Parameter                  | Value  |
-|----------------------------|--------|
-| gamma `γ`                  | 0.995  |
-| GAE coefficient            | 0.95   |
-| learning rate `µ` (actor)  | 0.0003 |
-| learning rate `µ` (critic) | 0.001  |
-| k                          | 5      |
-
 
 
 ### Model architecture

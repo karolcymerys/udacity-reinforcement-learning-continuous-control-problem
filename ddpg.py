@@ -56,11 +56,14 @@ class DDPG:
 
     def act(self,
             states: Union[torch.DoubleTensor, torch.cuda.DoubleTensor],
-            noise_sampler: OUNoise) -> Union[torch.DoubleTensor, torch.cuda.DoubleTensor]:
+            noise_sampler: Union[OUNoise, None]) -> Union[torch.DoubleTensor, torch.cuda.DoubleTensor]:
         self.actor_network.eval()
         with torch.no_grad():
-            ou_noise = noise_sampler.sample()
-            return (self.actor_network(states) + ou_noise).clip(-1, 1)
+            result = self.actor_network(states)
+            if noise_sampler:
+                result += noise_sampler.sample()
+
+            return result.clip(-1, 1)
 
     def train(self,
               env: ReacherEnvironment,
@@ -197,7 +200,7 @@ class DDPG:
         results = env.reset()
         scores = np.zeros(env.agents_size())
         while not np.any(results.dones):
-            actions = self.act(results.states)
+            actions = self.act(results.states, None)
             results = env.step(actions)
             scores += results.rewards
             print(f'\rCurrent score: {np.mean(scores)}', end='')
