@@ -42,7 +42,7 @@ To resolve this problem following MLP architectures were employed:
 or Distributed Distributional Deterministic Policy Gradients (D4PG) [4]
 - Use tool to optimize hyperparameters (such as Optuna)
 
-[[1] Continuous control with deep reinforcement learning](https://arxiv.org/abs/1509.02971)
-[[2] Trust Region Policy Optimization](https://arxiv.org/abs/1502.05477)
-[[3] Proximal Policy Optimization](https://arxiv.org/abs/1707.06347)
-[[4] Distributed Distributional Deterministic Policy Gradients](https://openreview.net/forum?id=SyZipzbCb)
+[[1] Continuous control with deep reinforcement learning](https://arxiv.org/abs/1509.02971)  
+[[2] Trust Region Policy Optimization](https://arxiv.org/abs/1502.05477)  
+[[3] Proximal Policy Optimization](https://arxiv.org/abs/1707.06347)  
+[[4] Distributed Distributional Deterministic Policy Gradients](https://openreview.net/forum?id=SyZipzbCb)  
