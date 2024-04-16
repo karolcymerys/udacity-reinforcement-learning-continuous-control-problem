@@ -74,7 +74,8 @@ class DDPG:
               tau: float = 1e-3,
               gamma: float = 0.99,
               buffer_size: int = 100_000,
-              optimizer_timestamps: int = 20,
+              optimize_every_timestamps: int = 20,
+              optimization_loops: int = 10,
               minibatch_size: int = 256) -> None:
         # https://spinningup.openai.com/en/latest/algorithms/ddpg.html
         # https://arxiv.org/abs/1509.02971
@@ -85,8 +86,8 @@ class DDPG:
         self.__soft_update(self.critic_network, target_critic_network, 1.0)
         noise_sampler = OUNoise((env.agents_size(), self.action_size), device=self.device)
 
-        actor_optimizer = torch.optim.Adam(self.actor_network.parameters(), actor_lr)
-        critic_optimizer = torch.optim.Adam(self.critic_network.parameters(), critic_lr)
+        actor_optimizer = torch.optim.AdamW(self.actor_network.parameters(), actor_lr)
+        critic_optimizer = torch.optim.AdamW(self.critic_network.parameters(), critic_lr)
 
         replay_buffer = ReplayBuffer(buffer_size, self.device)
         scores = []
@@ -114,7 +115,7 @@ class DDPG:
                     )
                     total_reward += results.rewards
 
-                    if t % optimizer_timestamps == 0:
+                    if t % optimize_every_timestamps == 0:
                         self.__learn(
                             target_actor_network,
                             target_critic_network,
@@ -123,7 +124,8 @@ class DDPG:
                             replay_buffer,
                             gamma,
                             tau,
-                            minibatch_size
+                            minibatch_size,
+                            optimization_loops
                         )
 
                     if np.any(results.dones):
@@ -153,7 +155,8 @@ class DDPG:
                 replay_buffer: ReplayBuffer,
                 gamma: float,
                 tau: float,
-                minibatch_size: int) -> None:
+                minibatch_size: int,
+                optimization_loops: int) -> None:
         # https://towardsdatascience.com/deep-deterministic-policy-gradients-explained-2d94655a9b7b
 
         self.actor_network.train()
@@ -162,7 +165,7 @@ class DDPG:
         target_critic_network.train()
         critic_loss_fn = nn.MSELoss()
 
-        for _ in range(10):
+        for _ in range(optimization_loops):
             samples = replay_buffer.sample(minibatch_size)
             states, actions, rewards, next_states, dones = samples
 
@@ -198,9 +201,11 @@ class DDPG:
 
     def test(self, env: ReacherEnvironment) -> None:
         results = env.reset()
+        timestemp = 0
         scores = np.zeros(env.agents_size())
         while not np.any(results.dones):
             actions = self.act(results.states, None)
             results = env.step(actions)
             scores += results.rewards
-            print(f'\rCurrent score: {np.mean(scores)}', end='')
+            timestemp += 1
+            print(f'\rTimestemp: {timestemp} Current score: {np.mean(scores)}', end='')

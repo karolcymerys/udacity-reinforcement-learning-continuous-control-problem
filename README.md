@@ -1,6 +1,6 @@
 # Udacity Project: Continuous Control
 
-__TODO: Put here animation of trained agent__
+![Demo Animation](./docs/demo_animation.gif)
 
 ## Description
 
@@ -10,7 +10,7 @@ The goal of this project is to resolve __multi-agent__ environment using __Reinf
 
 This environment is called _Reacher_ environment. 
 It consists of 20 double-joined arms (__agents__). 
-The goal of single agent is to move arm to the goal location and keep it there.
+The goal of single agent is to keep its arm in goal location (goal location is presented as green sphere).
 Environment is considered as resolved in training process when all the agents get 
 __an average score of +30 over 100 consecutive episodes__.
 
@@ -101,9 +101,9 @@ Feel free to train your own agents. In order to do that:
 
 1. In `train.py` file adjust hyperparameters
 2. Run `python train.py` to start training process
-3. Once training is completed, then your network is saved in `model_weights.py` file
+3. Once training is completed, then your network is saved in `ddpg_actor_model_weights.py` file
 
 ### Testing
 
 1. In order to run trained agent, run following command `python test.py`
-   (it utilizes model weights from `model_weights.py` file)  
+   (it utilizes model weights from `ddpg_actor_model_weights.py` file)  
