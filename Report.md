@@ -1,20 +1,20 @@
 # Implementation details
 ___
 
+## Deep Deterministic Policy Gradient (DDPG)
 In order to solve this problem Deep Deterministic Policy Gradient (DDPG) method was employed. 
 Algorithm is depicted on below picture [1]:  
 ![DDPG algorithm](./docs/ddpg_algorithm.png)
 
 
-## Plot of rewards
+### Plot of rewards
 
-### DDPG
 
 ![Plot of rewards](./docs/DDPG_score_plot.png)
 
 Problem goal was reached at __156th episode__.
 
-#### Utilized hyperparameters
+### Utilized hyperparameters
 
 | Parameter                  | Value                      |
 |----------------------------|----------------------------|
@@ -41,6 +41,12 @@ To resolve this problem following MLP architectures were employed:
 #### Critic network:  
 ![Critic network](./docs/critic_architecture.png)
 
+
+## Proximal Policy Optimization (PPO)
+In order to solve this problem Proximal Policy Optimization (PPO) method was employed. However, the goal was not achieved.
+Algorithm is depicted on below picture [5]:  
+![DDPG algorithm](./docs/ppo_algorithm.png)
+
 ## Ideas for improvements
 
 - Trying another algorithm, e.g. Trust Region Policy Optimization (TRPO) [2], Policy Proximal Optimization (PPO) [3]
@@ -51,3 +57,4 @@ or Distributed Distributional Deterministic Policy Gradients (D4PG) [4]
 [[2] Trust Region Policy Optimization](https://arxiv.org/abs/1502.05477)  
 [[3] Proximal Policy Optimization](https://arxiv.org/abs/1707.06347)  
 [[4] Distributed Distributional Deterministic Policy Gradients](https://openreview.net/forum?id=SyZipzbCb)  
+[[5] Proximal Policy Optimization - OpenAI Spinning Up](https://spinningup.openai.com/en/latest/algorithms/ppo.html)
